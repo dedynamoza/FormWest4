@@ -210,6 +210,8 @@ class="w-full py-4 px-4 bg-green-600 text-white font-bold text-base rounded-xl h
         const PRODUCT_PRICES = {
             "Biznet Home Internet 0D 175": 175000,
             "Biznet Home Internet 0D 150": 150000,
+            "Biznet Home Internet 0DS 175": 175000,
+            "Biznet Home Internet 0DS 150": 150000,
             "Biznet Home Internet 1D": 375000,
             "Biznet Home Internet 2D": 575000,
             "Biznet Home Gamers 3D": 700000,
@@ -387,13 +389,37 @@ class="w-full py-4 px-4 bg-green-600 text-white font-bold text-base rounded-xl h
             entries.forEach(entry => {
                 const entryId = entry.getAttribute('data-id');
                 const monthlyFeeInput = document.getElementById(`monthlyFee-${entryId}`);
+                const ispExistingSelect = document.getElementById(`ispExisting-${entryId}`);
+                
                 if (currentRole === 'AE') {
-                    monthlyFeeInput.disabled = true;
-                    monthlyFeeInput.value = '';
+                    // For AE, enable monthly fee input when ISP Existing is selected
+                    const ispSelected = ispExistingSelect && ispExistingSelect.value;
+                    monthlyFeeInput.disabled = !ispSelected;
+                    if (!ispSelected) {
+                        monthlyFeeInput.value = '';
+                    }
                 } else {
                     monthlyFeeInput.disabled = false;
                 }
             });
+        }
+
+        /**
+         * Update monthly fee status ketika ISP Existing dipilih pada AE role.
+         * @param {number} entryId - ID entri.
+         */
+        function updateMonthlyFeeOnISPChange(entryId) {
+            if (currentRole === 'AE') {
+                const ispExistingSelect = document.getElementById(`ispExisting-${entryId}`);
+                const monthlyFeeInput = document.getElementById(`monthlyFee-${entryId}`);
+                const ispSelected = ispExistingSelect && ispExistingSelect.value;
+                
+                // Enable monthly fee jika ISP Existing dipilih, disable jika tidak
+                monthlyFeeInput.disabled = !ispSelected;
+                if (!ispSelected) {
+                    monthlyFeeInput.value = '';
+                }
+            }
         }
 
         // =========================================================================
@@ -542,6 +568,18 @@ class="w-full py-4 px-4 bg-green-600 text-white font-bold text-base rounded-xl h
             "Property & Construction",
             "Automotive",
             "Food & Beverages"
+        ];
+
+        const AC_BIZNET_HOME_OPTIONS = [
+            "Biznet Home Internet 0D 175",
+            "Biznet Home Internet 0D 150",
+            "Biznet Home Internet 1D",
+            "Biznet Home Internet 2D",
+            "Biznet Home Gamers 3D",
+            "Biznet Home Internet 0D Rent",
+            "Biznet Home Internet 1D Rent",
+            "Biznet Home Internet 2D Rent",
+            "Biznet Home Gamers 3D Rent"
         ];
 
         const SERVICE_OPTIONS = [
@@ -910,8 +948,30 @@ class="w-full py-4 px-4 bg-green-600 text-white font-bold text-base rounded-xl h
                 const prospectInput = prospectGroup.querySelector('input');
                 if (prospectInput) prospectInput.required = false;
             } else {
-                // For AC, clear additional fields (no service dropdown for AC, even in Bengkulu)
-                additionalFields.innerHTML = '';
+                // For AC role
+                let html = '';
+
+                if (selectedStatus === 'Deal') {
+                    // Tambah Product dropdown untuk AC saat status Deal
+                    html = `
+                        <div class="form-group">
+                            <label for="product-${entryId}" class="block text-sm font-medium text-gray-700 mb-2">Product</label>
+                            <select id="product-${entryId}" class="w-full border-gray-300 rounded-lg p-3 touch-target">
+                                <!-- Opsi diisi oleh JS -->
+                            </select>
+                        </div>
+                    `;
+                }
+
+                additionalFields.innerHTML = html;
+
+                // Populate product dropdown jika diperlukan
+                if (selectedStatus === 'Deal') {
+                    setTimeout(() => {
+                        populateDropdown(document.getElementById(`product-${entryId}`), AC_BIZNET_HOME_OPTIONS, "Pilih Product...", "");
+                        document.getElementById(`product-${entryId}`).addEventListener('change', updateSaveButtonStatus);
+                    }, 0);
+                }
 
                 // Show all fields for AC
                 document.getElementById(`phone-group-${entryId}`).style.display = 'block';
@@ -1463,6 +1523,12 @@ class="w-full py-4 px-4 bg-green-600 text-white font-bold text-base rounded-xl h
             const branchSelectForAdditional = newEntry.querySelector(`#branch-${newId}`);
             branchSelectForAdditional.addEventListener('change', () => updateAdditionalFields(newId));
 
+            // Listener untuk ISP Existing change untuk enable/disable monthly fee pada AE role
+            const ispSelectForMonthlyFee = newEntry.querySelector(`#ispExisting-${newId}`);
+            if (ispSelectForMonthlyFee) {
+                ispSelectForMonthlyFee.addEventListener('change', () => updateMonthlyFeeOnISPChange(newId));
+            }
+
             // Listener untuk role change untuk update sales dropdown
             const roleButtons = newEntry.querySelectorAll(`#ac-btn-${newId}, #ae-btn-${newId}, #store-btn-${newId}`);
             roleButtons.forEach(btn => {
@@ -1653,7 +1719,8 @@ class="w-full py-4 px-4 bg-green-600 text-white font-bold text-base rounded-xl h
                     Segmentation: document.getElementById(`segmentation-${entryId}`)?.value || '',
                     Service: document.getElementById(`service-${entryId}`)?.value || '',
                     Bundling: document.getElementById(`bundling-${entryId}`)?.value || '',
-                    Revenue: document.getElementById(`revenue-${entryId}`)?.value || ''
+                    Revenue: document.getElementById(`revenue-${entryId}`)?.value || '',
+                    Product: document.getElementById(`product-${entryId}`)?.value || ''
                 };
 
                 data.push(entryData);
